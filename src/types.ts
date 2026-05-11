@@ -13,7 +13,7 @@ export const BREATHING_MODES: BreathingMode[] = [
   {
     id: 'box',
     name: 'Cuadrada',
-    description: 'Equilibra el sistema nervioso y reduce tensión.',
+    description: 'Equilibra el sistema nervioso y reduce tension.',
     inhale: 4,
     holdIn: 4,
     exhale: 4,
@@ -22,8 +22,8 @@ export const BREATHING_MODES: BreathingMode[] = [
   },
   {
     id: 'relax',
-    name: 'Relajación (4-7-8)',
-    description: 'Perfecta para reducir ansiedad y preparar el sueño.',
+    name: 'Relajacion (4-7-8)',
+    description: 'Perfecta para reducir ansiedad y preparar el sueno.',
     inhale: 4,
     holdIn: 7,
     exhale: 8,
@@ -32,7 +32,7 @@ export const BREATHING_MODES: BreathingMode[] = [
   },
   {
     id: 'focus',
-    name: 'Concentración',
+    name: 'Concentracion',
     description: 'Estimula la claridad mental y el enfoque.',
     inhale: 4,
     holdIn: 2,
@@ -43,7 +43,7 @@ export const BREATHING_MODES: BreathingMode[] = [
   {
     id: 'deep',
     name: 'Profunda',
-    description: 'Máxima oxigenación y calma profunda.',
+    description: 'Maxima oxigenacion y calma profunda.',
     inhale: 6,
     holdIn: 0,
     exhale: 6,
@@ -60,8 +60,31 @@ export interface SoundMode {
 }
 
 export const SOUND_MODES: SoundMode[] = [
-  { id: 'rain', name: 'Lluvia', icon: 'CloudRain', url: 'https://assets.mixkit.co/active_storage/sfx/2418/2418-preview.mp3' },
-  { id: 'forest', name: 'Bosque', icon: 'Trees', url: 'https://assets.mixkit.co/active_storage/sfx/2437/2437-preview.mp3' },
-  { id: 'waves', name: 'Océano', icon: 'Waves', url: 'https://assets.mixkit.co/active_storage/sfx/2431/2431-preview.mp3' },
-  { id: 'white-noise', name: 'Ruido Blanco', icon: 'Zap', url: 'https://assets.mixkit.co/active_storage/sfx/2435/2435-preview.mp3' },
+  {
+    id: 'rain',
+    name: 'Lluvia',
+    icon: 'CloudRain',
+    type: 'stream',
+    url: 'https://cdn.pixabay.com/download/audio/2022/04/16/audio_520eb6a5cc.mp3?filename=light-rain-109591.mp3'
+  },
+  {
+    id: 'forest',
+    name: 'Bosque',
+    icon: 'Trees',
+    type: 'stream',
+    url: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_6b294070f5.mp3?filename=forest-with-small-river-birds-and-nature-field-recording-6735.mp3'
+  },
+  {
+    id: 'waves',
+    name: 'Oceano',
+    icon: 'Waves',
+    type: 'stream',
+    url: 'https://cdn.pixabay.com/download/audio/2022/06/07/audio_b9bd4170e4.mp3?filename=ocean-waves-112906.mp3'
+  },
+  {
+    id: 'night',
+    name: 'Noche Suave',
+    icon: 'Zap',
+    url: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_c4d98b122c.mp3?filename=summer-night-piano-solo-6885.mp3'
+  },
 ];
