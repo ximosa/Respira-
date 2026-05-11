@@ -24,6 +24,29 @@ Construida con un enfoque **mobile-first**, ofrece una experiencia fluida, minim
 
 ---
 
+## 💻 Instalación Local
+
+Para ejecutar Respira+ en tu propia máquina:
+
+1. **Clona el repositorio**:
+   ```bash
+   git clone https://github.com/TU_USUARIO/respira-plus.git
+   cd respira-plus
+   ```
+
+2. **Instala las dependencias**:
+   ```bash
+   npm install
+   ```
+
+3. **Inicia el servidor de desarrollo**:
+   ```bash
+   npm run dev
+   ```
+   La aplicación estará disponible en `http://localhost:3000`.
+
+---
+
 ## 📖 Tutorial de Uso
 
 ### 1. Respiración
@@ -41,68 +64,24 @@ Para disfrutar de la experiencia completa:
 
 ## 🛠️ Cómo subir a GitHub Pages
 
-La aplicación está preparada para ser desplegada fácilmente mediante **GitHub Actions**.
+La forma más rápida de desplegar la aplicación es usando el script automatizado que ya viene configurado:
 
-### Paso 1: Configurar el Repositorio
-1. Crea un nuevo repositorio en GitHub.
-2. Sube tu código:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/TU_USUARIO/respira-plus.git
-   git push -u origin main
-   ```
-
-### Paso 2: Configurar GitHub Pages
-1. Ve a la pestaña **Settings** de tu repositorio en GitHub.
-2. En el menú lateral, selecciona **Pages**.
-3. En **Build and deployment** > **Source**, selecciona **GitHub Actions**.
-
-### Paso 3: Crear el Workflow de Despliegue
-Crea un archivo en `.github/workflows/deploy.yml` con el siguiente contenido:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm install
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+### 1. Configura el repositorio remoto
+Si aún no lo has hecho:
+```bash
+git remote add origin https://github.com/TU_USUARIO/respira-plus.git
 ```
 
-### Paso 4: Ajustar la Base de la URL
-Si tu repositorio no es el principal (ej: `usuario.github.io/respira-plus`), asegúrate de que en `vite.config.ts` el campo `base` sea:
-`base: '/respira-plus/'`
+### 2. Ajusta la Base de la URL (Importante)
+En `vite.config.ts`, asegúrate de que el campo `base` coincida con el nombre de tu repositorio para que los assets carguen correctamente:
+`base: '/nombre-de-tu-repo/'`
+
+### 3. Despliegue con un solo comando
+Simplemente ejecuta:
+```bash
+npm run deploy
+```
+Este comando construirá la aplicación (`build`) y subirá el contenido de la carpeta `dist` automáticamente a la rama `gh-pages` de tu repositorio. GitHub Pages detectará esta rama y publicará tu sitio en cuestión de minutos.
 
 ---
 
