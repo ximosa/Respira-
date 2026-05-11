@@ -41,7 +41,7 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Router>
+    <Router basename={import.meta.env.BASE_URL}>
       <div className="relative min-h-screen w-full overflow-hidden bg-black text-white selection:bg-white/20 selection:text-white">
         <Background />
         <Navigation />

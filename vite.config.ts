@@ -6,7 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const repoName = 'Respira-';
   return {
+    base: mode === 'production' ? `/${repoName}/` : '/',
     plugins: [
       react(), 
       tailwindcss(),
