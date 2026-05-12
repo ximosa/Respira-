@@ -4,36 +4,42 @@ import { Play, Pause, RotateCcw, ChevronLeft, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type SessionPhase = 'breathing' | 'hold' | 'recovery' | 'completed';
-type Intensity = 'beginner' | 'advanced';
+type BreathPhase = 'inhale' | 'hold' | 'exhale';
 
-const PROTOCOLS = {
-  beginner: {
-    rounds: 2,
-    breathsPerRound: 10,
-    holdSeconds: 30,
-    recoverySeconds: 15,
-    label: 'Principiante',
-  },
-  advanced: {
-    rounds: 3,
-    breathsPerRound: 20,
-    holdSeconds: 60,
-    recoverySeconds: 15,
-    label: 'Avanzado',
-  },
+const DEFAULT_PROTOCOL = {
+  rounds: 2,
+  breathsPerRound: 10,
+  holdSeconds: 30,
+  recoverySeconds: 15,
+  inhaleSeconds: 4,
+  breathHoldSeconds: 2,
+  exhaleSeconds: 4,
+  label: 'Base',
 } as const;
 
+const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
 export default function Focus() {
-  const [intensity, setIntensity] = useState<Intensity>('beginner');
   const [isActive, setIsActive] = useState(false);
   const [phase, setPhase] = useState<SessionPhase>('breathing');
+  const [breathPhase, setBreathPhase] = useState<BreathPhase>('inhale');
   const [round, setRound] = useState(1);
   const [breathCount, setBreathCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
-  const protocol = PROTOCOLS[intensity];
+  const protocol = DEFAULT_PROTOCOL;
+
+  const [inhaleSeconds, setInhaleSeconds] = useState(protocol.inhaleSeconds);
+  const [breathHoldSeconds, setBreathHoldSeconds] = useState(protocol.breathHoldSeconds);
+  const [exhaleSeconds, setExhaleSeconds] = useState(protocol.exhaleSeconds);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const getBreathPhaseDuration = (currentPhase: BreathPhase) => {
+    if (currentPhase === 'inhale') return inhaleSeconds;
+    if (currentPhase === 'hold') return breathHoldSeconds;
+    return exhaleSeconds;
+  };
 
   useEffect(() => {
     if (!isActive || phase === 'completed') {
@@ -47,17 +53,41 @@ export default function Focus() {
     if (timerRef.current) clearInterval(timerRef.current);
 
     if (phase === 'breathing') {
+      if (timeLeft <= 0) {
+        setTimeLeft(getBreathPhaseDuration(breathPhase));
+        return;
+      }
+
       timerRef.current = setInterval(() => {
-        setBreathCount((prev) => {
-          const next = prev + 1;
-          if (next >= protocol.breathsPerRound) {
-            setPhase('hold');
-            setTimeLeft(protocol.holdSeconds);
-            return protocol.breathsPerRound;
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            if (breathPhase === 'inhale') {
+              setBreathPhase('hold');
+              return breathHoldSeconds;
+            }
+
+            if (breathPhase === 'hold') {
+              setBreathPhase('exhale');
+              return exhaleSeconds;
+            }
+
+            setBreathCount((currentBreaths) => {
+              const next = currentBreaths + 1;
+              if (next >= protocol.breathsPerRound) {
+                setPhase('hold');
+                setTimeLeft(protocol.holdSeconds);
+                return protocol.breathsPerRound;
+              }
+
+              return next;
+            });
+            setBreathPhase('inhale');
+            return inhaleSeconds;
           }
-          return next;
+
+          return prev - 1;
         });
-      }, 2000);
+      }, 1000);
     } else {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -75,8 +105,9 @@ export default function Focus() {
 
             setRound((current) => current + 1);
             setPhase('breathing');
+            setBreathPhase('inhale');
             setBreathCount(0);
-            return 0;
+            return inhaleSeconds;
           }
 
           return prev - 1;
@@ -90,16 +121,33 @@ export default function Focus() {
         timerRef.current = null;
       }
     };
-  }, [isActive, phase, round, protocol.breathsPerRound, protocol.holdSeconds, protocol.recoverySeconds, protocol.rounds]);
+  }, [
+    isActive,
+    phase,
+    breathPhase,
+    round,
+    timeLeft,
+    protocol.breathsPerRound,
+    protocol.holdSeconds,
+    protocol.recoverySeconds,
+    protocol.rounds,
+    inhaleSeconds,
+    breathHoldSeconds,
+    exhaleSeconds,
+  ]);
 
   const toggleTimer = () => {
     if (phase === 'completed') return;
+    if (!isActive && phase === 'breathing' && timeLeft <= 0) {
+      setTimeLeft(getBreathPhaseDuration(breathPhase));
+    }
     setIsActive((prev) => !prev);
   };
 
   const resetTimer = () => {
     setIsActive(false);
     setPhase('breathing');
+    setBreathPhase('inhale');
     setRound(1);
     setBreathCount(0);
     setTimeLeft(0);
@@ -122,12 +170,30 @@ export default function Focus() {
 
   const phaseTitle =
     phase === 'breathing'
-      ? 'Respira Profundo'
+      ? breathPhase === 'inhale'
+        ? 'Inspiracion'
+        : breathPhase === 'hold'
+          ? 'Aguante'
+          : 'Expiracion'
       : phase === 'hold'
         ? 'Retencion'
         : phase === 'recovery'
           ? 'Recuperacion'
           : 'Sesion Completada';
+
+  const breathingStepsSummary = `Respiracion: ${inhaleSeconds}s inspiracion, ${breathHoldSeconds}s aguante y ${exhaleSeconds}s expiracion.`;
+  const innerCircleStrokeColor =
+    phase === 'breathing'
+      ? breathPhase === 'inhale'
+        ? '#34d399'
+        : breathPhase === 'hold'
+          ? '#f59e0b'
+          : '#22d3ee'
+      : phase === 'hold'
+        ? '#60a5fa'
+        : phase === 'recovery'
+          ? '#a78bfa'
+          : '#e5e7eb';
 
   return (
     <div className="w-full max-w-md mx-auto space-y-12 flex flex-col items-center">
@@ -141,7 +207,8 @@ export default function Focus() {
         </div>
       </header>
 
-      <section className="relative w-64 h-64 flex items-center justify-center">
+      <section className="w-full flex flex-col items-center gap-5">
+        <div className="relative w-64 h-64 flex items-center justify-center">
         <svg className="absolute inset-0 w-full h-full -rotate-90">
           <circle
             cx="128" cy="128" r="120"
@@ -161,35 +228,93 @@ export default function Focus() {
           />
         </svg>
 
-        <div className="text-center space-y-1 z-10">
+        <motion.div
+          className="absolute z-0 w-36 h-36"
+          animate={{ scale: phase === 'breathing' && breathPhase === 'inhale' ? 1.08 : 0.95, opacity: 0.95 }}
+          transition={{ duration: 0.7, ease: 'easeInOut' }}
+        >
+          <svg className="w-full h-full -rotate-90">
+            <circle
+              cx="72"
+              cy="72"
+              r="62"
+              fill="transparent"
+              stroke="rgba(255,255,255,0.12)"
+              strokeWidth="8"
+            />
+            <circle
+              cx="72"
+              cy="72"
+              r="62"
+              fill="transparent"
+              stroke={innerCircleStrokeColor}
+              strokeWidth="8"
+              strokeLinecap="round"
+            />
+          </svg>
+        </motion.div>
+
+        </div>
+
+        <div className="text-center space-y-1">
           <p className="text-sm font-medium text-white/40 uppercase tracking-widest">{phaseTitle}</p>
-          {phase === 'breathing' && <p className="text-6xl font-light tracking-tight font-mono">{breathCount}/{protocol.breathsPerRound}</p>}
-          {(phase === 'hold' || phase === 'recovery') && <p className="text-7xl font-light tracking-tight font-mono">{formatTime(timeLeft)}</p>}
+          {phase === 'breathing' && <p className="text-5xl font-light tracking-tight font-mono">{breathCount}/{protocol.breathsPerRound}</p>}
+          {(phase === 'breathing' || phase === 'hold' || phase === 'recovery') && (
+            <p className="text-3xl font-light tracking-tight font-mono text-white/80">{formatTime(timeLeft)}</p>
+          )}
           {phase === 'completed' && <p className="text-4xl font-light tracking-tight">Listo</p>}
           <p className="text-xs text-white/50">Ronda {round} de {protocol.rounds}</p>
         </div>
       </section>
 
       <div className="w-full space-y-8">
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => {
-              setIntensity('beginner');
-              resetTimer();
-            }}
-            className={`py-3 rounded-xl border transition-colors ${intensity === 'beginner' ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70'}`}
-          >
-            Principiante
-          </button>
-          <button
-            onClick={() => {
-              setIntensity('advanced');
-              resetTimer();
-            }}
-            className={`py-3 rounded-xl border transition-colors ${intensity === 'advanced' ? 'bg-blue-500/20 border-blue-400/50 text-blue-300' : 'bg-white/5 border-white/10 text-white/70'}`}
-          >
-            Avanzado
-          </button>
+        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs text-white/40 uppercase tracking-widest">Tiempos personalizados (segundos)</p>
+
+          <label className="block text-sm text-white/80">
+            Inspiracion
+            <input
+              type="number"
+              min={1}
+              max={15}
+              value={inhaleSeconds}
+              onChange={(event) => {
+                setInhaleSeconds(clampValue(Number(event.target.value) || 1, 1, 15));
+                resetTimer();
+              }}
+              className="mt-2 w-full rounded-lg border border-white/15 bg-black/20 px-3 py-2 font-mono text-white"
+            />
+          </label>
+
+          <label className="block text-sm text-white/80">
+            Aguante
+            <input
+              type="number"
+              min={1}
+              max={15}
+              value={breathHoldSeconds}
+              onChange={(event) => {
+                setBreathHoldSeconds(clampValue(Number(event.target.value) || 1, 1, 15));
+                resetTimer();
+              }}
+              className="mt-2 w-full rounded-lg border border-white/15 bg-black/20 px-3 py-2 font-mono text-white"
+            />
+          </label>
+
+          <label className="block text-sm text-white/80">
+            Expiracion
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={exhaleSeconds}
+              onChange={(event) => {
+                setExhaleSeconds(clampValue(Number(event.target.value) || 1, 1, 20));
+                resetTimer();
+              }}
+              className="mt-2 w-full rounded-lg border border-white/15 bg-black/20 px-3 py-2 font-mono text-white"
+            />
+          </label>
         </div>
 
         <div className="flex items-center justify-center gap-6">
@@ -212,8 +337,21 @@ export default function Focus() {
         </div>
 
         <p className="text-center text-sm text-white/60 leading-relaxed px-4">
-          {protocol.label}: {protocol.rounds} rondas, {protocol.breathsPerRound} respiraciones, retencion de {protocol.holdSeconds}s y recuperacion de {protocol.recoverySeconds}s. Hazlo sentado y nunca en agua ni conduciendo.
+          Base: {protocol.rounds} rondas, {protocol.breathsPerRound} respiraciones, retencion de {protocol.holdSeconds}s y recuperacion de {protocol.recoverySeconds}s. {breathingStepsSummary} Hazlo sentado y nunca en agua ni conduciendo.
         </p>
+
+        <section className="w-full rounded-2xl border border-sky-300/20 bg-sky-500/10 p-4 space-y-3">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-sky-200">Tutorial: adapta los tiempos</h3>
+          <p className="text-sm text-white/80 leading-relaxed">
+            Empieza con un ritmo comodo y sin mareo: 3-4s inspiracion, 1-2s aguante y 4-6s expiracion. Si puedes terminar una ronda completa con respiracion nasal o diafragmatica sin tension en cuello/hombros, sube solo 1 segundo a la fase que notes mas estable.
+          </p>
+          <p className="text-sm text-white/80 leading-relaxed">
+            Para mejorar la oxigenacion, prioriza respiraciones profundas y controladas, postura erguida y expiracion completa. Evita forzar hiperventilacion: si aparece hormigueo fuerte, vision borrosa o mareo, para, vuelve a respiracion normal y reduce tiempos en la siguiente sesion.
+          </p>
+          <p className="text-xs text-white/60 leading-relaxed">
+            Nota de seguridad: esta app no sustituye consejo medico. Si tienes enfermedad respiratoria/cardiaca, ansiedad intensa, embarazo o saturacion de O2 baja, consulta con un profesional antes de intensificar.
+          </p>
+        </section>
       </div>
     </div>
   );
