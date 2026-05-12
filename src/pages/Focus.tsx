@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Play, Pause, RotateCcw, ChevronLeft, Brain } from 'lucide-react';
+import { Play, Pause, RotateCcw, ChevronLeft, Brain, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type SessionPhase = 'breathing' | 'hold' | 'recovery' | 'completed';
@@ -26,6 +26,7 @@ export default function Focus() {
   const [round, setRound] = useState(1);
   const [breathCount, setBreathCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [guidedAudioEnabled, setGuidedAudioEnabled] = useState(true);
 
   const protocol = DEFAULT_PROTOCOL;
 
@@ -34,6 +35,7 @@ export default function Focus() {
   const [exhaleSeconds, setExhaleSeconds] = useState(protocol.exhaleSeconds);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVoiceCueRef = useRef('');
 
   const getBreathPhaseDuration = (currentPhase: BreathPhase) => {
     if (currentPhase === 'inhale') return inhaleSeconds;
@@ -136,8 +138,47 @@ export default function Focus() {
     exhaleSeconds,
   ]);
 
+  useEffect(() => {
+    if (!guidedAudioEnabled || !isActive || phase === 'completed' || typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    const cueText =
+      phase === 'breathing'
+        ? breathPhase === 'inhale'
+          ? 'Inspira'
+          : breathPhase === 'hold'
+            ? 'Aguanta'
+            : 'Expira'
+        : phase === 'hold'
+          ? 'Reten'
+          : phase === 'recovery'
+            ? 'Recupera'
+            : '';
+
+    const cueKey = `${phase}-${breathPhase}-${round}-${breathCount}`;
+    if (!cueText || cueKey === lastVoiceCueRef.current) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(cueText);
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+    lastVoiceCueRef.current = cueKey;
+  }, [guidedAudioEnabled, isActive, phase, breathPhase, round, breathCount]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   const toggleTimer = () => {
     if (phase === 'completed') return;
+    if (isActive && typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     if (!isActive && phase === 'breathing' && timeLeft <= 0) {
       setTimeLeft(getBreathPhaseDuration(breathPhase));
     }
@@ -151,6 +192,10 @@ export default function Focus() {
     setRound(1);
     setBreathCount(0);
     setTimeLeft(0);
+    lastVoiceCueRef.current = '';
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -202,8 +247,26 @@ export default function Focus() {
           <ChevronLeft size={20} />
         </Link>
         <h2 className="text-xl font-medium">Modo Enfoque Wim Hof</h2>
-        <div className="p-2 bg-white/5 rounded-full border border-white/10">
-          <Brain size={20} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setGuidedAudioEnabled((prev) => {
+                const next = !prev;
+                if (!next && typeof window !== 'undefined' && window.speechSynthesis) {
+                  window.speechSynthesis.cancel();
+                }
+                return next;
+              });
+            }}
+            className="p-2 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-colors"
+            aria-label={guidedAudioEnabled ? 'Desactivar audio guiado' : 'Activar audio guiado'}
+            title={guidedAudioEnabled ? 'Audio guiado activado' : 'Audio guiado desactivado'}
+          >
+            {guidedAudioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+          <div className="p-2 bg-white/5 rounded-full border border-white/10">
+            <Brain size={20} />
+          </div>
         </div>
       </header>
 
