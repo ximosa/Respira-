@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, RotateCcw, ChevronLeft, Info } from 'lucide-react';
+import { Play, Pause, RotateCcw, ChevronLeft, Info, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BreathingCircle from '../components/breathing/BreathingCircle';
 import { BREATHING_MODES, BreathingMode } from '../types';
@@ -14,8 +14,10 @@ export default function Breathing() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
+  const [guidedAudioEnabled, setGuidedAudioEnabled] = useState(true);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVoiceCueRef = useRef('');
 
   useEffect(() => {
     if (isActive) {
@@ -41,6 +43,38 @@ export default function Breathing() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isActive, phase]);
+
+  useEffect(() => {
+    if (!guidedAudioEnabled || !isActive || phase === 'idle' || typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    const cueText =
+      phase === 'inhale'
+        ? 'Inspira'
+        : phase === 'holdIn'
+          ? 'Aguanta'
+          : phase === 'exhale'
+            ? 'Expira'
+            : 'Descansa';
+
+    const cueKey = `${phase}-${activeMode.id}`;
+    if (cueKey === lastVoiceCueRef.current) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(cueText);
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+    lastVoiceCueRef.current = cueKey;
+  }, [guidedAudioEnabled, isActive, phase, activeMode.id]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const startPhase = (newPhase: Phase) => {
     setPhase(newPhase);
@@ -71,13 +105,22 @@ export default function Breathing() {
     }
   };
 
-  const toggleTimer = () => setIsActive(!isActive);
+  const toggleTimer = () => {
+    if (isActive && typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsActive(!isActive);
+  };
   
   const resetTimer = () => {
     setIsActive(false);
     setPhase('idle');
     setTimeLeft(0);
     setTotalSeconds(0);
+    lastVoiceCueRef.current = '';
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -93,9 +136,27 @@ export default function Breathing() {
           <ChevronLeft size={20} />
         </Link>
         <h2 className="text-xl font-medium">Respiración</h2>
-        <button className="p-2 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
-          <Info size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setGuidedAudioEnabled((prev) => {
+                const next = !prev;
+                if (!next && typeof window !== 'undefined' && window.speechSynthesis) {
+                  window.speechSynthesis.cancel();
+                }
+                return next;
+              });
+            }}
+            className="p-2 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-colors"
+            aria-label={guidedAudioEnabled ? 'Desactivar audio guiado' : 'Activar audio guiado'}
+            title={guidedAudioEnabled ? 'Audio guiado activado' : 'Audio guiado desactivado'}
+          >
+            {guidedAudioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+          <button className="p-2 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
+            <Info size={20} />
+          </button>
+        </div>
       </header>
 
       <div className="py-12 flex flex-col items-center gap-4">
@@ -139,6 +200,7 @@ export default function Breathing() {
                 key={mode.id}
                 onClick={() => {
                   setActiveMode(mode);
+                  lastVoiceCueRef.current = '';
                   resetTimer();
                 }}
                 className={`p-4 rounded-2xl border text-left transition-all duration-300 ${

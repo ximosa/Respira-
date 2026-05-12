@@ -67,7 +67,7 @@ export default function BreathingCircle({ phase, duration, mode }: BreathingCirc
           {phase === 'inhale' && 'Inhalar'}
           {phase === 'holdIn' && 'Mantener'}
           {phase === 'exhale' && 'Exhalar'}
-          {phase === 'holdOut' && 'Vacío'}
+          {phase === 'holdOut' && 'Descansa'}
           {phase === 'idle' && 'Listo?'}
         </motion.span>
       </motion.div>
